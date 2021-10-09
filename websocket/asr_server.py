@@ -11,18 +11,22 @@ import concurrent.futures
 import logging
 from vosk import Model, SpkModel, KaldiRecognizer
 
-def process_chunk(rec, message):
+def process_chunk(rec, message, frames):
     if message == '{"eof" : 1}':
-        return rec.FinalResult(), True
-    # left channel
+        return rec.FinalResult(), [], False, True
     newaudiodata = audioop.tomono(message, 2, 1, 0)
     # right channel
     #newaudiodata = audioop.tomono(message, 2, 0, 1)
     if rec.AcceptWaveform(newaudiodata):
-        return rec.Result(), False
+        frames.append(newaudiodata)
+        return rec.Result(), frames, True, False
     else:
-        return rec.PartialResult(), False
-
+        frames.append(newaudiodata)
+        #return rec.PartialResult(), frames, False, False
+        return '{"partial":""}', frames, False, False
+		
+		
+		
 async def recognize(websocket, path):
     global model
     global spk_model
@@ -31,13 +35,14 @@ async def recognize(websocket, path):
     global pool
 
     rec = None
+    recfull = None
     phrase_list = None
     sample_rate = args.sample_rate
     show_words = args.show_words
     max_alternatives = args.max_alternatives
-
+    
     logging.info('Connection from %s', websocket.remote_address);
-
+    frames=[]
     while True:
 
         message = await websocket.recv()
@@ -66,9 +71,30 @@ async def recognize(websocket, path):
             rec.SetMaxAlternatives(max_alternatives)
             if spk_model:
                 rec.SetSpkModel(spk_model)
+        # Create the recognizer, word list is temporary disabled since not every model supports it
+        if not recfull:
+            if phrase_list:
+                recfull = KaldiRecognizer(model, sample_rate, json.dumps(phrase_list, ensure_ascii=False))
+            else:
+                recfull = KaldiRecognizer(model, sample_rate)
+            recfull.SetWords(show_words)
+            recfull.SetMaxAlternatives(max_alternatives)
+            if spk_model:
+                recfull.SetSpkModel(spk_model)
 
-        response, stop = await loop.run_in_executor(pool, process_chunk, rec, message)
-        await websocket.send(response)
+        print ('start' , datetime.now())
+        response, frames, endsetense, stop = await loop.run_in_executor(pool, process_chunk, rec, message, frames)
+        #await websocket.send(response)
+        if endsetense:
+            audiodata = b''.join(frames)
+            if recfull.AcceptWaveform(audiodata):
+                await websocket.send(recfull.Result())
+            else:
+                await websocket.send(recfull.PartialResult())
+            frames.clear()
+            print ('finish' , datetime.now())
+        else:
+            await websocket.send(response)
         if stop: break
 
 

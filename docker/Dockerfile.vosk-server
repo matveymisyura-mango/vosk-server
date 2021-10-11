@@ -55,7 +55,7 @@ RUN \
     && cd /opt/vosk-api/python \
     && python3 ./setup.py install \
     \
-    && git clone https://github.com/alphacep/vosk-server /opt/vosk-server \
+    && git clone https://github.com/matveymisyura-mango/vosk-server /opt/vosk-server \
     \
     && rm -rf /opt/vosk-api/src/*.o \
     && rm -rf /opt/kaldi \

@@ -10,20 +10,32 @@ import websockets
 import concurrent.futures
 import logging
 from vosk import Model, SpkModel, KaldiRecognizer
+from datetime import datetime
 
-def process_chunk(rec, message, frames):
+
+def process_chunk(rec, message):
+    startsentese = False
+    endsentese = False
+    
     if message == '{"eof" : 1}':
-        return rec.FinalResult(), [], False, True
-    newaudiodata = audioop.tomono(message, 2, 1, 0)
-    # right channel
-    #newaudiodata = audioop.tomono(message, 2, 0, 1)
-    if rec.AcceptWaveform(newaudiodata):
-        frames.append(newaudiodata)
-        return rec.Result(), frames, True, False
+        endsentese = True
+        rec.FinalResult()
+        return '{"partial":""}', startsentese, endsentese, True
+    elif rec.AcceptWaveform(message):
+        partsentense =  json.loads(rec.Result())
+        if len(partsentense['text']) > 1:
+            startsentese = True
+            endsentese = True
+        return '{"partial":""}', startsentese, endsentese, False
+        #return rec.Result(), startsentese, endsentese, False
     else:
-        frames.append(newaudiodata)
-        #return rec.PartialResult(), frames, False, False
-        return '{"partial":""}', frames, False, False
+        partsentense =  json.loads(rec.PartialResult())
+        if len(partsentense['partial']) < 1:
+            return '{"partial":""}', startsentese, endsentese, False
+        else:
+            print('start sentence')
+            startsentese = True
+            return '{"partial":""}', startsentese, endsentese,False
 		
 		
 		
@@ -35,14 +47,14 @@ async def recognize(websocket, path):
     global pool
 
     rec = None
-    recfull = None
+    recfinal = None
     phrase_list = None
     sample_rate = args.sample_rate
     show_words = args.show_words
     max_alternatives = args.max_alternatives
-    
-    logging.info('Connection from %s', websocket.remote_address);
     frames=[]
+    logging.info('Connection from %s', websocket.remote_address);
+
     while True:
 
         message = await websocket.recv()
@@ -72,30 +84,52 @@ async def recognize(websocket, path):
             if spk_model:
                 rec.SetSpkModel(spk_model)
         # Create the recognizer, word list is temporary disabled since not every model supports it
-        if not recfull:
+        if not recfinal:
             if phrase_list:
-                recfull = KaldiRecognizer(model, sample_rate, json.dumps(phrase_list, ensure_ascii=False))
+                recfinal = KaldiRecognizer(model, sample_rate, json.dumps(phrase_list, ensure_ascii=False))
             else:
-                recfull = KaldiRecognizer(model, sample_rate)
-            recfull.SetWords(show_words)
-            recfull.SetMaxAlternatives(max_alternatives)
+                recfinal = KaldiRecognizer(model, sample_rate)
+            recfinal.SetWords(show_words)
+            recfinal.SetMaxAlternatives(max_alternatives)
             if spk_model:
-                recfull.SetSpkModel(spk_model)
+                recfinal.SetSpkModel(spk_model)
 
-        print ('start' , datetime.now())
-        response, frames, endsetense, stop = await loop.run_in_executor(pool, process_chunk, rec, message, frames)
+        
+
+        if message != '{"eof" : 1}':
+            # left channel
+            leftchaneldata = audioop.tomono(message, 2, 1, 0)
+            # right channel
+            #newaudiodata = audioop.tomono(message, 2, 0, 1)
+        
+        response, startsentese, endsentese, stop = await loop.run_in_executor(pool, process_chunk, rec, leftchaneldata)
+
+        frames.append(leftchaneldata)
+
+            
         #await websocket.send(response)
-        if endsetense:
+        if endsentese == True:
+            logging.info('Start recognition frase ' + str(datetime.now()));
             audiodata = b''.join(frames)
-            if recfull.AcceptWaveform(audiodata):
-                await websocket.send(recfull.Result())
+            if recfinal.AcceptWaveform(audiodata):
+                result = recfinal.Result()
             else:
-                await websocket.send(recfull.PartialResult())
+                result = recfinal.FinalResult()
+            await websocket.send(result)
+            recfinal.Reset()
             frames.clear()
-            print ('finish' , datetime.now())
+            logging.info('End recognition frase ' + str(datetime.now())); 
+            logging.info('Recognition result ' + str(json.loads(result)['text']));  
         else:
             await websocket.send(response)
-        if stop: break
+
+        #if startsentese == False:
+        #    frames.clear()
+          
+        # if end the streem stop recognition streem
+        if stop:
+            break
+
 
 
 
@@ -109,10 +143,10 @@ def start():
 
     # Enable loging if needed
     #
-    # logger = logging.getLogger('websockets')
-    # logger.setLevel(logging.INFO)
-    # logger.addHandler(logging.StreamHandler())
-    logging.basicConfig(level=logging.INFO)
+    stream_handler = logging.StreamHandler()
+    stream_handler.setLevel(logging.INFO)
+    logging.basicConfig(level=logging.INFO,
+                    handlers=[logging.FileHandler("ASR_local.log", encoding='utf-8', mode='w'), stream_handler])
 
     args = type('', (), {})()
 

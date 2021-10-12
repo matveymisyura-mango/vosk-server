@@ -116,9 +116,9 @@ def start():
     args.max_alternatives = int(os.environ.get('VOSK_ALTERNATIVES', 0))
     args.show_words = bool(os.environ.get('VOSK_SHOW_WORDS', True))
 
-    #if len(sys.argv) > 1:
-    #   args.model_path = sys.argv[1]
-    args.model_path = 'model-he'
+    if len(sys.argv) > 1:
+       args.model_path = sys.argv[1]
+    #args.model_path = 'model-he'
 
     # Gpu part, uncomment if vosk-api has gpu support
     #

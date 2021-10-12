@@ -75,14 +75,15 @@ async def recognize(websocket, path):
                 rec = KaldiRecognizer(model, sample_rate, json.dumps(phrase_list, ensure_ascii=False))
             else:
                 rec = KaldiRecognizer(model, sample_rate)
-            #rec.SetWords(show_words)
-            #rec.SetMaxAlternatives(max_alternatives)
+            rec.SetWords(show_words)
+            rec.SetMaxAlternatives(max_alternatives)
             #if spk_model:
-            #    rec.SetSpkModel(spk_model)
+            #   rec.SetSpkModel(spk_model)
 
-        if message != '{"eof" : 1}' and detector.is_new_silence(message):
-            await websocket.send('{"partial":"silence_detected"}')
-            continue
+        if len(message) >10 :
+            if detector.is_new_silence(message):
+                await websocket.send('{"partial":"silence_detected"}')
+                continue
 
         try:
             response, stop = await loop.run_in_executor(pool, process_chunk, rec, message)

@@ -8,6 +8,7 @@ import concurrent.futures
 import logging
 from vosk import Model, KaldiRecognizer
 from datetime import datetime
+import audioop
 
 
 def process_chunk(rec, message):

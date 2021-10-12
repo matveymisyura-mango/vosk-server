@@ -14,7 +14,6 @@ import silence_detector
 from datetime import datetime
 
 def process_chunk(rec, message):
-     logging.info('Connection from %s', websocket.remote_address);
     if message == '{"eof" : 1}':
         return rec.FinalResult(), True
     logging.info('Start recognition frase ' + str(datetime.now()));

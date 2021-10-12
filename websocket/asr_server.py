@@ -5,7 +5,6 @@ import os
 import sys
 import asyncio
 import pathlib
-import audioop
 import websockets
 import concurrent.futures
 import logging
@@ -17,8 +16,7 @@ def process_chunk(rec, message):
     if message == '{"eof" : 1}':
         return rec.FinalResult(), True
     logging.info('Start recognition frase ' + str(datetime.now()));
-    leftchaneldata = audioop.tomono(message, 2, 1, 0)
-    if rec.AcceptWaveform(leftchaneldata):
+    if rec.AcceptWaveform(message):
         out = rec.Result()
         rec.Reset()
         logging.info('End recognition frase ' + str(datetime.now())); 

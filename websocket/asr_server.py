@@ -9,12 +9,15 @@ import websockets
 import concurrent.futures
 import logging
 from vosk import Model, SpkModel, KaldiRecognizer
-import silence_detector
+#import silence_detector
 from datetime import datetime
 
 def process_chunk(rec, message):
     if message == '{"eof" : 1}':
-        return rec.FinalResult(), True
+        out = rec.FinalResult()
+        rec.Reset()
+        logging.info('End recognition frase ' + str(datetime.now())); 
+        return out, True
     logging.info('Start recognition frase ' + str(datetime.now()));
     if rec.AcceptWaveform(message):
         out = rec.Result()
@@ -22,7 +25,6 @@ def process_chunk(rec, message):
         logging.info('End recognition frase ' + str(datetime.now())); 
         return out, False
     else:
-        logging.info('End recognition frase ' + str(datetime.now())); 
         return rec.PartialResult(), False
 
 async def recognize(websocket, path):
@@ -40,7 +42,7 @@ async def recognize(websocket, path):
 
     logging.info('Connection from %s', websocket.remote_address);
     
-    detector = silence_detector.SilenceDetector(silence_detector.FQ8000HZ, silence_detector.SIGNED16BIT,
+    #detector = silence_detector.SilenceDetector(silence_detector.FQ8000HZ, silence_detector.SIGNED16BIT,
                                                 silence_detector.LITTLE_ENDIAN,
                                                 silence_length=1800, volume_level=15000000, silence_to_volume_level=0.25)
 
@@ -73,21 +75,31 @@ async def recognize(websocket, path):
                 rec = KaldiRecognizer(model, sample_rate, json.dumps(phrase_list, ensure_ascii=False))
             else:
                 rec = KaldiRecognizer(model, sample_rate)
+            #new change
             #rec.SetWords(show_words)
             #rec.SetMaxAlternatives(max_alternatives)
             #if spk_model:
             #    rec.SetSpkModel(spk_model)
 
-        if message != '{"eof" : 1}' and detector.is_new_silence(message):
-            await websocket.send('{"partial":"silence_detected"}')
-            continue
+        #if message != '{"eof" : 1}' and detector.is_new_silence(message):
+        #    await websocket.send('{"partial":"silence_detected"}')
+        #    continue
+        # end new change
         try:
             response, stop = await loop.run_in_executor(pool, process_chunk, rec, message)
+            out = json.loads(response)
+            #new change
+            if 'partial' in result:
+                if result['partial'] == '':
+                    response = '{"partial":"silence_detected"}'
+            # end new change
             await websocket.send(response)
         except:
             logging.info('When recognition socket abnormaly closed ' + str(datetime.now()));
             break
-        if stop: break
+
+        if stop: 
+            break
 
 
 

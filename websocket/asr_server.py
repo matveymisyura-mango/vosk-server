@@ -14,10 +14,7 @@ from datetime import datetime
 
 def process_chunk(rec, message):
     if message == '{"eof" : 1}':
-        out = rec.FinalResult()
-        rec.Reset()
-        logging.info('End recognition frase ' + str(datetime.now())); 
-        return out, True
+        return rec.FinalResult(), True
     logging.info('Start recognition frase ' + str(datetime.now()));
     if rec.AcceptWaveform(message):
         out = rec.Result()
@@ -25,6 +22,7 @@ def process_chunk(rec, message):
         logging.info('End recognition frase ' + str(datetime.now())); 
         return out, False
     else:
+        logging.info('End recognition frase ' + str(datetime.now())); 
         return rec.PartialResult(), False
 
 async def recognize(websocket, path):
@@ -75,7 +73,6 @@ async def recognize(websocket, path):
                 rec = KaldiRecognizer(model, sample_rate, json.dumps(phrase_list, ensure_ascii=False))
             else:
                 rec = KaldiRecognizer(model, sample_rate)
-            #new change
             #rec.SetWords(show_words)
             #rec.SetMaxAlternatives(max_alternatives)
             #if spk_model:
@@ -84,22 +81,13 @@ async def recognize(websocket, path):
         #if message != '{"eof" : 1}' and detector.is_new_silence(message):
         #    await websocket.send('{"partial":"silence_detected"}')
         #    continue
-        # end new change
         try:
             response, stop = await loop.run_in_executor(pool, process_chunk, rec, message)
-            out = json.loads(response)
-            #new change
-            if 'partial' in result:
-                if result['partial'] == '':
-                    response = '{"partial":"silence_detected"}'
-            # end new change
             await websocket.send(response)
         except:
             logging.info('When recognition socket abnormaly closed ' + str(datetime.now()));
             break
-
-        if stop: 
-            break
+        if stop: break
 
 
 

@@ -43,8 +43,8 @@ async def recognize(websocket, path):
     logging.info('Connection from %s', websocket.remote_address);
     
     #detector = silence_detector.SilenceDetector(silence_detector.FQ8000HZ, silence_detector.SIGNED16BIT,
-                                                silence_detector.LITTLE_ENDIAN,
-                                                silence_length=1800, volume_level=15000000, silence_to_volume_level=0.25)
+    #                                            silence_detector.LITTLE_ENDIAN,
+    #                                            silence_length=1800, volume_level=15000000, silence_to_volume_level=0.25)
 
     while True:
 

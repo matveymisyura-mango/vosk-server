@@ -20,7 +20,7 @@ def process_chunk(rec, message):
     if rec.AcceptWaveform(message):
         out = rec.Result()
         rec.Reset()
-        filelog = open('/usr/share/freeswitch/scripts/recognition' + str(datetime.date(datetime.today())) + '.log', 'a')
+        filelog = open('recognition' + str(datetime.date(datetime.today())) + '.log', 'a')
         #logging.info('End recognition frase ' + str(datetime.now())); 
         filelog.write('start recognition frase '+ startrecognition + '\n' + 'end recognition frase '+ str(datetime.now()) + '\n')
         filelog.close()
@@ -90,7 +90,7 @@ async def recognize(websocket, path):
             await websocket.send(response)
             res = json.loads(response)
             if 'text' in res:
-                filelog = open('/usr/share/freeswitch/scripts/recognition' + str(datetime.date(datetime.today())) + '.log', 'a')
+                filelog = open('recognition' + str(datetime.date(datetime.today())) + '.log', 'a')
                 filelog.write('send recognized text to freeswitch '+ str(datetime.now()) + '\n')
                 filelog.close()
         except:

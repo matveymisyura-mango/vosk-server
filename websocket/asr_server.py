@@ -20,7 +20,7 @@ def process_chunk(rec, message):
     if rec.AcceptWaveform(message):
         out = rec.Result()
         rec.Reset()
-         filelog = open('/usr/share/freeswitch/scripts/recognition' + str(datetime.date(datetime.today())) + '.log', 'a')
+        filelog = open('/usr/share/freeswitch/scripts/recognition' + str(datetime.date(datetime.today())) + '.log', 'a')
         #logging.info('End recognition frase ' + str(datetime.now())); 
         filelog.write('start recognition frase '+ startrecognition + '\n' + 'end recognition frase '+ str(datetime.now()) + '\n')
         filelog.close()

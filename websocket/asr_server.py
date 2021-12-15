@@ -15,14 +15,18 @@ from datetime import datetime
 def process_chunk(rec, message):
     if message == '{"eof" : 1}':
         return rec.FinalResult(), True
-    logging.info('Start recognition frase ' + str(datetime.now()));
+    #logging.info('Start recognition frase ' + str(datetime.now()));
+    startrecognition = str(datetime.now())
     if rec.AcceptWaveform(message):
         out = rec.Result()
         rec.Reset()
-        logging.info('End recognition frase ' + str(datetime.now())); 
+         filelog = open('/usr/share/freeswitch/scripts/recognition' + str(datetime.date(datetime.today())) + '.log', 'a')
+        #logging.info('End recognition frase ' + str(datetime.now())); 
+        filelog.write('start recognition frase '+ startrecognition + '\n' + 'end recognition frase '+ str(datetime.now()) + '\n')
+        filelog.close()
         return out, False
     else:
-        logging.info('End recognition frase ' + str(datetime.now())); 
+        #logging.info('End recognition frase ' + str(datetime.now())); 
         return rec.PartialResult(), False
 
 async def recognize(websocket, path):
@@ -49,7 +53,7 @@ async def recognize(websocket, path):
         try:
             message = await websocket.recv()
         except websockets.ConnectionClosed:
-            logging.info('Socket abnormaly closed ' + str(datetime.now()));
+            #logging.info('Socket abnormaly closed ' + str(datetime.now()));
             break
 
 
@@ -84,6 +88,11 @@ async def recognize(websocket, path):
         try:
             response, stop = await loop.run_in_executor(pool, process_chunk, rec, message)
             await websocket.send(response)
+            res = json.loads(response)
+            if 'text' in res:
+                filelog = open('/usr/share/freeswitch/scripts/recognition' + str(datetime.date(datetime.today())) + '.log', 'a')
+                filelog.write('send recognized text to freeswitch '+ str(datetime.now()) + '\n')
+                filelog.close()
         except:
             logging.info('When recognition socket abnormaly closed ' + str(datetime.now()));
             break

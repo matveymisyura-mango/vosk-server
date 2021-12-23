@@ -89,9 +89,14 @@ async def recognize(websocket, path):
             response, stop = await loop.run_in_executor(pool, process_chunk, rec, message)
             await websocket.send(response)
             res = json.loads(response)
+
+            if 'partial' in res:
+                filelog = open('recognition' + str(datetime.date(datetime.today())) + '.log', 'a')
+                filelog.write(str(res['partial']) + ' part phrase '+ str(datetime.now()) + '\n')
+                filelog.close()
             if 'text' in res:
                 filelog = open('recognition' + str(datetime.date(datetime.today())) + '.log', 'a')
-                filelog.write('send recognized text to freeswitch '+ str(datetime.now()) + '\n')
+                filelog.write(str(res['text']) + ' recognized text result. Send recognized text to freeswitch '+ str(datetime.now()) + '\n')
                 filelog.close()
         except:
             logging.info('When recognition socket abnormaly closed ' + str(datetime.now()));
